@@ -70,7 +70,7 @@ async def fix_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-async def main():
+def main():
 
     app = (
         Application
@@ -90,11 +90,11 @@ async def main():
 
     print("Bot running")
 
-
-    await app.run_polling()
+    app.run_polling()
 
 
 
 if __name__ == "__main__":
 
-    asyncio.run(main())
+    main()
+
