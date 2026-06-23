@@ -4,19 +4,19 @@ import asyncio
 from telegram import ChatPermissions, Update
 from telegram.ext import (
     Application,
-    ChatMemberHandler,
-    ContextTypes
+    MessageHandler,
+    ContextTypes,
+    filters
 )
 
 
 TOKEN = os.getenv("BOT_TOKEN")
 
 
-# Permissions you want verified users to have
 FULL_PERMISSIONS = ChatPermissions(
     can_send_messages=True,
     can_send_audios=True,
-    can_send_documents=True,     # THIS enables files
+    can_send_documents=True,
     can_send_photos=True,
     can_send_videos=True,
     can_send_video_notes=True,
@@ -27,45 +27,50 @@ FULL_PERMISSIONS = ChatPermissions(
 )
 
 
-async def fix_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def fix_member(chat_id, user_id, context):
 
-    change = update.chat_member
+    # retry because NUSVerifyBot may apply permissions later
+    for i in range(10):
 
-    if not change:
-        return
+        try:
 
+            await context.bot.restrict_chat_member(
+                chat_id=chat_id,
+                user_id=user_id,
+                permissions=FULL_PERMISSIONS
+            )
 
-    chat_id = change.chat.id
-    user_id = change.new_chat_member.user.id
+            print(
+                f"Fixed permissions for {user_id}, attempt {i+1}"
+            )
 
-
-    print(
-        f"Detected member update: {user_id}"
-    )
-
-
-    # wait for NUSVerifyBot to finish
-    await asyncio.sleep(3)
-
-
-    try:
-
-        await context.bot.restrict_chat_member(
-            chat_id=chat_id,
-            user_id=user_id,
-            permissions=FULL_PERMISSIONS
-        )
-
-        print(
-            f"Fixed permissions for {user_id}"
-        )
+        except Exception as e:
+            print("Error:", e)
 
 
-    except Exception as e:
+        # wait 5 seconds before trying again
+        await asyncio.sleep(5)
+
+
+
+async def new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    chat_id = update.effective_chat.id
+
+
+    for user in update.message.new_chat_members:
 
         print(
-            "Error:",
-            e
+            f"New member detected: {user.id}"
+        )
+
+
+        asyncio.create_task(
+            fix_member(
+                chat_id,
+                user.id,
+                context
+            )
         )
 
 
@@ -81,20 +86,21 @@ def main():
 
 
     app.add_handler(
-        ChatMemberHandler(
-            fix_user,
-            ChatMemberHandler.CHAT_MEMBER
+        MessageHandler(
+            filters.StatusUpdate.NEW_CHAT_MEMBERS,
+            new_member
         )
     )
 
 
     print("Bot running")
 
-    app.run_polling()
+    app.run_polling(
+        allowed_updates=["message"]
+    )
 
 
 
 if __name__ == "__main__":
 
     main()
-
