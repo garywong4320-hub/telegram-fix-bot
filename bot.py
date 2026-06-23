@@ -29,27 +29,32 @@ FULL_PERMISSIONS = ChatPermissions(
 
 async def fix_member(chat_id, user_id, context):
 
-    # retry because NUSVerifyBot may apply permissions later
-    for i in range(10):
+    # wait for NUSVerifyBot verification
+    print(f"Waiting before fixing {user_id}")
 
-        try:
-
-            await context.bot.restrict_chat_member(
-                chat_id=chat_id,
-                user_id=user_id,
-                permissions=FULL_PERMISSIONS
-            )
-
-            print(
-                f"Fixed permissions for {user_id}, attempt {i+1}"
-            )
-
-        except Exception as e:
-            print("Error:", e)
+    await asyncio.sleep(120)   # 2 minutes
 
 
-        # wait 5 seconds before trying again
-        await asyncio.sleep(5)
+    try:
+
+        await context.bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            permissions=FULL_PERMISSIONS
+        )
+
+
+        print(
+            f"Permissions fixed for {user_id}"
+        )
+
+
+    except Exception as e:
+
+        print(
+            "Error:",
+            e
+        )
 
 
 
@@ -95,6 +100,7 @@ def main():
 
     print("Bot running")
 
+
     app.run_polling(
         allowed_updates=["message"]
     )
@@ -102,5 +108,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()
